@@ -1,0 +1,76 @@
+services:
+  kafka-broker:
+    container_name: kafka-broker
+    hostname: kafka-broker
+    image: "bitnami/kafka:latest"
+    env_file:
+      - ./.env
+    volumes:
+      - ../src/kafka/data:/bitnami/kafka/data/
+    ports:
+      - ${KAFKA_BROKER_PORT}:9098
+    environment:
+      KAFKA_CFG_NODE_ID: ${KAFKA_CFG_NODE_ID}
+      KAFKA_CFG_PROCESS_ROLES: ${KAFKA_CFG_PROCESS_ROLES}
+      KAFKA_CFG_CONTROLLER_QUORUM_VOTERS: ${KAFKA_CFG_CONTROLLER_QUORUM_VOTERS}
+      KAFKA_CFG_CONTROLLER_LISTENER_NAMES: ${KAFKA_CFG_CONTROLLER_LISTENER_NAMES}
+      KAFKA_CFG_ADVERTISED_LISTENERS: ${KAFKA_CFG_ADVERTISED_LISTENERS}
+      KAFKA_CFG_LISTENERS: ${KAFKA_CFG_LISTENERS}
+      KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: ${KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP}
+    restart: always
+    user: root
+    tty: true
+    stdin_open: true
+    networks:
+      - kafka-network
+
+  kafka-ui:
+    container_name: kafka-ui-container
+    image: "provectuslabs/kafka-ui:latest"
+    env_file:
+      - ./.env
+    environment:
+      KAFKA_CLUSTERS_0_NAME: ${KAFKA_CLUSTERS_0_NAME}
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: ${KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS}
+      SERVER_PORT: ${SERVER_PORT}
+    restart: always
+    user: root
+    tty: true
+    stdin_open: true
+    ports:
+      - ${SERVER_PORT}:9099
+    networks:
+      - kafka-network
+    depends_on:
+      - kafka-broker
+      
+  video-analyser-container-service:
+    container_name: video-analyser-container
+    build: 
+      context: ../src
+      dockerfile: dockerfile
+    env_file:
+      - ./.env
+    environment:
+      KAFKA_CLUSTERS_0_NAME: "kakfa-broker"
+      KAFKA_TOPIC_NAME: ${KAFKA_TOPIC_NAME}
+      KAFKA_BROKER_IPADDRESS: ${KAFKA_BROKER_IPADDRESS}
+      KAFKA_BROKER_PORT: ${KAFKA_BROKER_PORT}
+    volumes:
+      - ../:/app/
+      - ../src:/app/src/
+      - ../src/data:/app/src/data/
+      #- ../weights:/root/.deepface/weights/
+    user: root
+    command: bash -c "cd /app/src/scripts && ./face_detector"
+    tty: true
+    cpus: '4'
+    depends_on:
+      - kafka-broker
+      - kafka-ui
+    networks:
+      - kafka-network
+
+networks:
+  kafka-network:
+    driver: bridge

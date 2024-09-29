@@ -1,0 +1,26 @@
+# Use a imagem base do Ubuntu
+FROM gcc:latest
+
+# Instala dependências
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    cmake \
+    git \
+    libopencv-dev \
+    python3-opencv \
+    && rm -rf /var/lib/apt/lists/*
+
+
+    # Definir o fuso horário
+ENV TZ=America/Sao_Paulo
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+
+# Cria um diretório para o código
+WORKDIR /app
+
+# Copia o código para o contêiner
+COPY . .
+
+# Compilar o arquivo main.cpp que agora faz detecção de faces
+CMD bash -c "cd /app/src/scripts && g++ -o face_detector ./main.cpp `pkg-config --cflags --libs opencv4`"
+#  && ./face_detector"
